@@ -1,0 +1,15 @@
+Package: dns-monitor
+Version: 0.1.0
+Section: net
+Priority: optional
+Architecture: aarch64-3.10
+Maintainer: Fifth-Ace
+Source: https://github.com/Fifth-Ace/dns-monitor
+Homepage: https://github.com/Fifth-Ace/dns-monitor
+License: MIT
+Description: DNS observability and diagnostics for Keenetic / Netcraze ARM64 routers.
+Filename: dns-monitor_0.1.0_aarch64-3.10.ipk
+Size: 2580664
+MD5sum: 0cc96ade87905e01913c71effb6fc384
+SHA256sum: 5b49b6cae53ae70e86dee8ee275bbb03edd2ec741e869d857caa3cc1c852364c
+
