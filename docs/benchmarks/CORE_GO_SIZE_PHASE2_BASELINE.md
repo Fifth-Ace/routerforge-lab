@@ -149,3 +149,39 @@ This is 10.42 percent of the current 6291456-byte stripped no-embed Core baselin
 This saving is large enough to make pprof separation the first measured Phase 2 optimization candidate.
 
 The optimization must preserve the frozen profiling contract while removing the heavy pprof implementation from the always-on Core binary.
+
+## Architecture spike: split profiler helper
+
+Goal:
+
+Measure a light always-on Core retaining profiling marker/config/status/middleware behaviour while moving net/http/pprof into a separate helper process.
+
+Measurement:
+
+- Go 1.21.13
+- linux/arm64
+- CGO disabled
+- stripped
+- frontend not embedded
+- production profiling.go modified only temporarily and restored byte-for-byte
+- temporary helper not committed
+
+Results:
+
+- current stripped Core: 6291456 bytes
+- experimental light Core: 5636096 bytes
+- always-on Core saving: 655360 bytes
+- always-on Core reduction: 10.42 percent
+- standalone profiler helper: 5111808 bytes
+- combined light Core plus helper: 10747904 bytes
+- combined disk delta versus current Core: 4456448 bytes
+- heavy pprof symbol hits remaining in light Core: 0
+
+Interpretation:
+
+The always-on Core saving is material and the split architecture remains a viable optimization candidate.
+
+Shipping the helper inside the mandatory Core package would increase total installed binary bytes, so the helper should be considered as an optional profiling package rather than unconditional Core payload.
+
+No production implementation was committed by this spike.
+Original Core source was restored before Go 1.21.13 tests and the official Core v1 parity gate were run.
