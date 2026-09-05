@@ -407,3 +407,268 @@ Still to freeze before Phase 1 is complete:
 - automated parity test vectors
 
 No Core optimization begins until these sections are frozen.
+
+---
+
+## 14. Catalog package-management HTTP contract
+
+Package lifecycle is exposed through two POST-only endpoints.
+
+### POST /api/catalog/install
+
+Request JSON:
+
+```json
+{
+  "id": "<catalog-item-id>"
+}
+```
+
+Behaviour:
+
+- POST only
+- same-origin required
+- id must be non-empty
+- operation maps to install
+- small-JSON decoder limits size and rejects unknown fields
+
+### POST /api/catalog/action
+
+Request JSON:
+
+```json
+{
+  "id": "<catalog-item-id>",
+  "action": "install|update|remove",
+  "confirm": "<optional typed confirmation>"
+}
+```
+
+Behaviour:
+
+- POST only
+- same-origin required
+- id must be non-empty
+- action is trim+lowercase normalized
+- only install/update/remove are executable
+- HTTP execution context timeout is 180 seconds
+
+## 15. Package-management execution gate
+
+Package mutation is disabled unless at least one marker exists:
+
+- /opt/etc/routerforge/package-management.enabled
+- /opt/etc/dns-monitor/marketplace-test-install.enabled
+
+Without a marker lifecycle execution fails closed with HTTP 403 semantics.
+
+## 16. Catalog action authorization and serialization
+
+All package lifecycle executions are serialized by a process-wide mutex.
+
+Before execution Core verifies:
+
+1. package management is enabled
+2. catalog item exists
+3. action is install/update/remove
+4. catalog Actions explicitly allows that action
+5. remove confirmation exactly equals item Name
+
+Disallowed catalog action returns 403.
+Remove confirmation mismatch returns 400.
+
+## 17. Executable lifecycle methods
+
+Only these methods execute:
+
+- routerforge-release
+- opkg
+- structured
+
+### routerforge-release
+
+Requires release version, package, asset, SHA256 and URL.
+Release package must match declared lifecycle packages when present.
+Download is checksum verified before opkg execution.
+
+Temporary directory:
+
+/opt/tmp/routerforge-marketplace
+
+Maximum downloaded asset size: 64 MiB.
+
+Install:
+
+opkg install <verified-local-ipk>
+
+Update:
+
+opkg --force-reinstall install <verified-local-ipk>
+
+routerforge-release does not implement remove.
+
+### Direct opkg
+
+- install -> opkg install
+- update -> opkg upgrade
+- remove -> opkg remove
+
+At least one package is required.
+
+### Structured lifecycle
+
+Supported steps:
+
+- write-opkg-feed
+- opkg-update
+- opkg-install
+- opkg-upgrade
+- opkg-remove
+
+Feed writes are restricted below /opt/etc/opkg/ and reject traversal-like paths.
+Feed content must start with src/gz and contain an HTTPS URL.
+Package names are restricted to the safe package-name character set.
+The only explicit opkg argument currently allowed is --autoremove.
+Ignored step failures remain visible in lifecycle output.
+
+nfqws2 install refuses to proceed while legacy nfqws-keenetic is installed.
+
+## 18. Lifecycle result and error contract
+
+Successful result contains current concepts:
+
+- id
+- name
+- action
+- packages
+- optional sources
+- installed
+- optional already_installed
+- optional output
+- completed_at
+
+Returned command/output log is bounded to 16000 characters.
+Lifecycle error detail is bounded to 4000 characters.
+
+HTTP lifecycle errors contain:
+
+- error
+- detail
+- result
+
+A failed HTTP result does not prove that no package-manager side effect occurred.
+
+## 19. Post-execution validation
+
+After lifecycle execution Core rebuilds catalog state.
+
+Install succeeds only if the item is subsequently detected as installed.
+Remove succeeds only if the item is subsequently detected as not installed.
+Update requires the item to remain installed and, when release version is known, installed version must match it.
+
+opkg exit status zero alone is not sufficient proof of lifecycle success.
+
+## 20. Current rollback semantics
+
+The current Core lifecycle performs post-validation but DOES NOT implement a general automatic rollback transaction.
+
+If opkg partially changes the system, a structured plan fails mid-way, or post-validation fails, Core reports failure but does not automatically restore the previous package/filesystem state.
+
+Therefore:
+
+- failure reporting is existing behaviour
+- post-validation is mandatory existing behaviour
+- general automatic rollback is currently absent
+
+Adding rollback is a separate safety/product change, not a footprint-only optimization.
+
+## 21. Admin proxy contract
+
+Public namespace:
+
+/api/admin/
+
+Current Admin proxy is GET-only.
+Non-GET methods return 405, Allow: GET and mutation_api=false.
+
+/api/admin and /api/admin/ map to /v1/summary.
+Other suffixes map to /v1/<suffix>.
+Query parameters are preserved.
+
+Unix sockets:
+
+- /opt/var/run/routerforge-admin.sock
+- /opt/var/run/dns-monitor-admin.sock
+
+Upstream timeout is 6 seconds.
+Upstream HTTP status is forwarded.
+Responses use JSON content type and Cache-Control: no-store.
+
+Unavailable Admin returns HTTP 503 with installed=false, running=false and mutation_api=false.
+
+## 22. RouterForge release-index contract
+
+Runtime release channel defaults to beta.
+Recognized channels are beta and stable; unknown values normalize to beta.
+
+Canonical repository:
+
+Fifth-Ace/routerforge
+
+Legacy fallback:
+
+Fifth-Ace/dns-monitor
+
+Cache path:
+
+/opt/var/cache/routerforge/release-index-<channel>.json
+
+Automatic refresh interval: 1 hour.
+Remote HTTP timeout: 8 seconds.
+Maximum release-index size: 512 KiB.
+
+A failed remote refresh marks status offline/error but does not erase the currently held valid release document.
+
+Validation includes:
+
+- schema_version == 1
+- channel matches selected channel
+- at most 128 components
+- valid package/version
+- asset rejects traversal
+- SHA256 exactly 64 hex characters
+- release URL restricted to approved RouterForge GitHub release repositories
+- duplicate package entries rejected
+
+## 23. Phase 1 lifecycle safety conclusions
+
+Frozen existing safeguards:
+
+- explicit package-management gate
+- same-origin mutation protection
+- catalog-authorized actions
+- typed remove confirmation
+- serialized package execution
+- allowlisted executable lifecycle methods
+- checksum-verified RouterForge assets
+- constrained structured opkg steps
+- finite execution timeout
+- post-execution catalog validation
+- read-only Admin boundary
+- stale valid release metadata survives remote refresh failure
+
+NOT an existing guarantee:
+
+- general transactional rollback
+
+## 24. Phase 1 remaining work
+
+Before Phase 1 is complete:
+
+- freeze RouterForge registry/cache behaviour
+- record package postinst/Core restart and inherited-FD behaviour
+- enumerate parity test vectors
+- create machine-runnable Core parity checks
+- verify frozen contract against current Go implementation
+
+No footprint optimization begins before those checks exist.
