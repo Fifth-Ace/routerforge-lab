@@ -201,3 +201,18 @@ Results:
 
 The modified source files were restored byte-for-byte before tests.
 No production source implementation is included in this measurement commit.
+
+## Candidate experiment: httputil ReverseProxy closure
+
+Measurement temporarily replaced net/http/httputil.ReverseProxy with a manual http.Client forwarder over the existing Unix-socket http.Transport.
+Module routing, Unix transport, and the rest of net/http remained present.
+
+Results:
+
+- current light Core: 5636096 bytes
+- experimental manual-proxy Core: 5570560 bytes
+- saving: 65536 bytes
+- reduction: 1.16 percent
+
+The modified source file was restored byte-for-byte before tests.
+No production source implementation is included in this measurement commit.
