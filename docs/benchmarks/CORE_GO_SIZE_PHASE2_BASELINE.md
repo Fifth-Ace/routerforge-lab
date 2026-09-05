@@ -216,3 +216,50 @@ Results:
 
 The modified source file was restored byte-for-byte before tests.
 No production source implementation is included in this measurement commit.
+
+## Production build flag attribution
+
+Exact Go 1.21.13, linux/arm64, CGO disabled, embedded frontend, light profiling backend.
+
+Sizes:
+
+- default production-shape build: 10510193 bytes
+- trimpath only: 10442511 bytes
+- strip only (-s -w): 7929856 bytes
+- empty build ID only: 10510193 bytes
+- trimpath plus strip: 7864320 bytes
+- current production flags: 7864320 bytes
+
+Isolated deltas:
+
+- trimpath standalone saving: 67682 bytes
+- strip standalone saving: 2580337 bytes
+- empty build ID standalone saving: 0 bytes
+- empty build ID saving on top of trimpath plus strip: 0 bytes
+- current combined saving: 2645873 bytes
+
+## Current light Core package-symbol attribution
+
+The following values sum go tool nm symbol sizes from an unstripped linux/arm64 light Core.
+They are attribution/ranking data, not stripped-file byte accounting.
+
+- net/http: 422405 bytes (412.5 KiB)
+- crypto/tls: 195369 bytes (190.8 KiB)
+- main: 167487 bytes (163.6 KiB)
+- net: 136146 bytes (133 KiB)
+- encoding/json: 83524 bytes (81.6 KiB)
+- time: 77116 bytes (75.3 KiB)
+- vendor/golang.org/x/text/unicode/norm: 75282 bytes (73.5 KiB)
+- reflect: 74177 bytes (72.4 KiB)
+- math/big: 57136 bytes (55.8 KiB)
+- crypto/x509: 56356 bytes (55 KiB)
+- crypto/internal/nistec: 52996 bytes (51.8 KiB)
+- strconv: 50729 bytes (49.5 KiB)
+- vendor/golang.org/x/net/idna: 44736 bytes (43.7 KiB)
+- encoding/asn1: 39832 bytes (38.9 KiB)
+- syscall: 38884 bytes (38 KiB)
+- fmt: 38704 bytes (37.8 KiB)
+- crypto/internal/nistec/fiat: 32112 bytes (31.4 KiB)
+- os: 31562 bytes (30.8 KiB)
+- strings: 25744 bytes (25.1 KiB)
+- crypto/aes: 24322 bytes (23.8 KiB)
