@@ -114,3 +114,38 @@ This commit is measurement-only.
 
 The first optimization must be selected from measured savings and symbol/package attribution.
 Core v1 parity remains mandatory after every optimization change.
+
+## Candidate experiment: optional pprof linkage
+
+Measurement method:
+
+- exact Go 1.21.13
+- linux/arm64 measurement target
+- CGO disabled
+- no frontend embed
+- stripped size measured with -trimpath and -s -w -buildid=
+- separate unstripped experimental binary used for symbol verification
+- net/http/pprof references removed temporarily for measurement only
+- profiling.go restored byte-for-byte immediately after builds
+
+Results:
+
+- normal stripped Core: 6291456 bytes
+- experimental stripped Core without pprof closure: 5636096 bytes
+- pprof linkage cost: 655360 bytes
+- reduction: 10.42 percent
+- remaining runtime/pprof, internal/profile, or net/http/pprof symbol hits: 0
+
+The experimental source modification was not committed.
+
+The Go 1.21.13 Core test suite passed again after the original profiling source was restored.
+The official Core v1 parity gate also passed after restoration.
+
+Interpretation:
+
+The optional pprof implementation contributes 655360 bytes, or 640 KiB, to the stripped always-on Core binary.
+This is 10.42 percent of the current 6291456-byte stripped no-embed Core baseline.
+
+This saving is large enough to make pprof separation the first measured Phase 2 optimization candidate.
+
+The optimization must preserve the frozen profiling contract while removing the heavy pprof implementation from the always-on Core binary.
