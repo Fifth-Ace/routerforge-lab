@@ -68,7 +68,7 @@ foreach ($V in $Variants) {
 $Default = Join-Path $Out "routerforge-noembed-default"
 
 & $GoExe tool nm -size -sort size $Default 2>$null |
-    Select-Object -Last 150 |
+    Select-Object -First 150 |
     Set-Content -Encoding UTF8 (Join-Path $Out "noembed-default-top-symbols.txt")
 
 $Deps = & $GoExe list -deps ./components/core
