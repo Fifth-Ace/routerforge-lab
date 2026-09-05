@@ -672,3 +672,247 @@ Before Phase 1 is complete:
 - verify frozen contract against current Go implementation
 
 No footprint optimization begins before those checks exist.
+
+---
+
+## 25. RouterForge registry source contract
+
+Core has three registry source levels:
+
+1. bundled registry compiled into Core
+2. valid on-disk cache
+3. valid remote registry
+
+Bundled registry resource:
+
+embedded/marketplace-index.json
+
+Registry initialization MUST have a valid bundled fallback.
+If the bundled registry cannot be parsed or validated, current Core treats this as a fatal programming/package error.
+
+At startup/first use:
+
+1. bundled registry is parsed and installed as initial state
+2. valid cache replaces bundled state when available
+3. remote refresh is scheduled independently when due
+
+This means Marketplace remains populated without network access.
+
+## 26. Registry channel and remote mapping
+
+Registry remote branch follows RouterForge release channel:
+
+- beta -> dev
+- stable -> main
+
+Canonical registry repository:
+
+Fifth-Ace/routerforge
+
+Legacy fallback repository:
+
+Fifth-Ace/dns-monitor
+
+Registry path:
+
+marketplace/registry/index.json
+
+Remote registry is fetched from raw.githubusercontent.com.
+
+RouterForge-owned URLs read from legacy registry data are canonicalized from Fifth-Ace/dns-monitor to Fifth-Ace/routerforge before catalog use.
+
+Third-party publisher URLs are not rewritten by this RouterForge canonicalization rule.
+
+## 27. Registry cache and refresh behaviour
+
+Cache path:
+
+/opt/var/cache/routerforge/marketplace-index-<channel>.json
+
+Automatic refresh interval:
+
+1 hour.
+
+Remote HTTP timeout:
+
+6 seconds.
+
+Maximum accepted registry size:
+
+2 MiB.
+
+Manual force-refresh waits up to approximately 8 seconds when a refresh is already running or initialization triggers one.
+
+Successful remote registry data is parsed and validated before it becomes active.
+Only valid data is written to cache.
+
+Cache update uses a temporary file followed by rename when possible.
+
+## 28. Registry stale-data semantics
+
+Remote failure does NOT erase the current valid registry document.
+
+On refresh failure:
+
+- registry status becomes online=false
+- error text is recorded
+- current bundled/cache/previous-remote document remains available
+
+Therefore registry document availability and remote freshness are separate states.
+
+A Core rewrite must preserve offline Marketplace operation and must not replace valid local registry state with an empty catalog merely because GitHub is unavailable.
+
+## 29. Registry validation contract
+
+Current registry validation requires:
+
+- schema_version == 1
+- registry_id == routerforge-community
+- brand == RouterForge
+- no more than 512 entries
+- every entry ID passes safe catalog-ID validation
+- duplicate IDs are rejected
+- kind is module or integration
+- item name is non-empty
+- publisher name is non-empty
+- trust status belongs to the allowlist
+- official trust is reserved for publisher id routerforge
+- lifecycle plans pass plan validation
+
+Allowed trust states:
+
+- official
+- verified
+- unverified
+- changed
+- blocked
+- deprecated
+
+Safe catalog IDs:
+
+- maximum length 80 characters
+- lowercase ASCII letters
+- digits
+- dash
+- underscore
+- dot
+
+A smaller/native Core must not loosen these trust and shape checks merely to reduce parser size.
+
+## 30. Registry lifecycle-plan validation
+
+Registry parser accepts lifecycle method metadata only from this allowlist:
+
+- routerforge-release
+- opkg
+- structured
+- manual
+- official-script
+- release-deploy
+
+Important distinction:
+
+Parser acceptance does NOT mean automatic execution permission.
+The lifecycle executor separately executes only its own allowlisted executable methods.
+
+Registry plan package names are validated.
+
+Structured registry steps are restricted to:
+
+- opkg-update
+- opkg-install
+- opkg-upgrade
+- opkg-remove
+- write-opkg-feed
+
+write-opkg-feed plan validation requires:
+
+- path below /opt/etc/opkg/
+- no traversal-like '..'
+- content beginning with src/gz
+- HTTPS source
+
+Registry validation and runtime execution validation are intentionally overlapping safety layers.
+
+## 31. Core package postinst contract
+
+Current Core postinst performs these state changes:
+
+- creates /opt/etc/routerforge
+- creates /opt/var/log
+- creates /opt/var/run
+- migrates legacy dns-monitor security.json when RouterForge security.json is absent
+- applies mode 0600 to migrated security config when possible
+- creates package-management.enabled marker
+- creates module-abi-v1 marker
+
+Then postinst restarts RouterForge Core when its init script exists.
+
+If RouterForge DNS init script exists and /opt/etc/routerforge/dns.enabled exists, postinst also restarts DNS.
+
+Current restart failures in postinst are intentionally ignored by shell '|| true'.
+
+This means package installation success does not by itself prove that restarted services are healthy.
+Higher-level lifecycle post-validation remains necessary.
+
+## 32. Known inherited-file-descriptor defect
+
+Current packaging starts Core directly from inside opkg postinst.
+
+The current postinst/init path does not explicitly close unrelated file descriptors inherited from the package-manager process before Core is started.
+
+Hardware baseline testing demonstrated that a Core process started through package postinst can retain inherited opkg lock descriptors.
+
+A later standalone Core restart does not retain those package-manager descriptors.
+
+This is a KNOWN DEFECT, not compatibility behaviour to preserve.
+
+Optimization/reimplementation requirements:
+
+- do not intentionally reproduce inherited package-manager descriptors
+- service startup must begin with a clean descriptor set apart from descriptors intentionally required by the service manager/runtime
+- post-install verification must check for unexpected inherited descriptors where practical
+- package-manager locks must not remain held merely because RouterForge Core is alive
+
+The clean standalone restart is the desired runtime baseline.
+
+## 33. Runtime baseline interpretation
+
+Core resource measurements taken immediately after package installation can be contaminated by postinst inheritance.
+
+Therefore authoritative runtime footprint measurements must distinguish:
+
+- process launched from package postinst
+- process launched by a clean standalone restart
+
+For footprint work, the clean standalone restart is the reference state unless the packaging lifecycle itself is being measured.
+
+Unexpected inherited descriptors are a packaging bug and must not be counted as normal Core requirements.
+
+## 34. Phase 1 contract freeze status
+
+At this point the written contract covers:
+
+- HTTP and SPA behaviour
+- authentication
+- SSE
+- module proxy ABI
+- Admin proxy
+- catalog HTTP mutation API
+- package lifecycle authorization
+- executable lifecycle methods
+- post-execution validation
+- current rollback absence
+- release-index source/cache/trust behaviour
+- registry source/cache/trust behaviour
+- package postinst startup behaviour
+- inherited-FD defect classification
+
+Remaining Phase 1 implementation work:
+
+- define executable parity test vectors
+- implement machine-runnable Core parity tests
+- run them against the current Go Core baseline
+- record the resulting baseline evidence
+
+No optimization/native replacement work begins until the parity harness passes against the current implementation.
