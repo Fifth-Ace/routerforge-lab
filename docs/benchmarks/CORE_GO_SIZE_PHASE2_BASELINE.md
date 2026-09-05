@@ -263,3 +263,49 @@ They are attribution/ranking data, not stripped-file byte accounting.
 - os: 31562 bytes (30.8 KiB)
 - strings: 25744 bytes (25.1 KiB)
 - crypto/aes: 24322 bytes (23.8 KiB)
+## Hardware runtime A/B: Phase1 versus light Phase2
+
+A/B measurement was performed on the test Keenetic using exact Phase1 and Phase2 source revisions, Go 1.21.13, linux/arm64, CGO disabled, no embedded frontend, and identical `-trimpath -ldflags="-s -w"` build flags.
+
+Both test binaries used a test-only profiling marker path so the installed production profiling marker and the production Core process were not modified.
+
+Binary sizes:
+
+- Phase1 Core: 6291456 bytes
+- Phase2 light Core: 5636096 bytes
+- saving: 655360 bytes
+- reduction: 10.42 percent
+
+Seven cold process runs per variant were measured after one second of settling.
+
+Average Phase1:
+
+- VmRSS: 5992.0 KiB
+- VmSize: 1231556.6 KiB
+- VmData: 40868.6 KiB
+- threads: 5.00
+- file descriptors: 7.00
+
+Average Phase2:
+
+- VmRSS: 5205.7 KiB
+- VmSize: 1230437.1 KiB
+- VmData: 40341.1 KiB
+- threads: 5.00
+- file descriptors: 7.00
+
+Phase2 minus Phase1:
+
+- VmRSS: -786.3 KiB (-13.1 percent)
+- VmSize: -1119.5 KiB
+- VmData: -527.5 KiB
+- threads: unchanged
+- file descriptors: unchanged
+
+`smaps_rollup` was unavailable on the test router, so PSS was not measured.
+
+Startup timing from this run is not treated as evidence because the BusyBox-compatible probe had one-second resolution and both variants became ready before the first interval.
+
+The installed production Core remained running throughout the experiment and `/api/health` on port 2233 returned successfully after the A/B run.
+
+Conclusion: removing the heavy pprof implementation from the default light Core is both a flash-size and resident-memory optimization. The optional in-process `core_pprof` build variant remains available when runtime Go profiling is required.
