@@ -42,6 +42,7 @@ catalog.go
 marketplace_install.go
 marketplace_install_http.go
 profiling.go
+profiling_backend_light.go
 routerforge_registry.go
 routerforge_release.go
 frontend_assets_embed.go
@@ -53,7 +54,7 @@ frontend_assets_embed.go
     routerforge_go build \
         -tags embed_frontend \
         -trimpath \
-        -ldflags="-s -w -X main.version=$PKG_VERSION -X main.releaseChannel=$CHANNEL" \
+        -ldflags="-s -w -buildid= -X main.version=$PKG_VERSION -X main.releaseChannel=$CHANNEL" \
         -o "$WORK/data/opt/bin/routerforge" $CORE_SOURCES
 )
 
