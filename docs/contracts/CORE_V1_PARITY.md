@@ -1,4 +1,4 @@
-﻿# RouterForge Core v1 contract freeze
+# RouterForge Core v1 contract freeze
 
 Status: Phase 1 baseline
 Baseline commit: f394ecae7621ca8cd14bde6c4832a7dece6817ff
@@ -916,3 +916,66 @@ Remaining Phase 1 implementation work:
 - record the resulting baseline evidence
 
 No optimization/native replacement work begins until the parity harness passes against the current implementation.
+
+---
+
+## 35. Phase 1 parity evidence
+
+Frozen Go Core baseline branch:
+
+phase1/core-parity
+
+Contract freeze commit:
+
+09e9bb4ef6936499ff0026b7c5d6b46d3ee2e7f4
+
+Portable HTTP parity baseline commit:
+
+06b3f8434d350a9e58d938808d4111cc71aa6c24
+
+Official parity gate commit:
+
+c567cbf889da246797bf70c5e69f786ea2218993
+
+Parity gate entry point:
+
+scripts/test-core-parity.ps1
+
+Reference invocation:
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-core-parity.ps1
+
+Observed baseline result:
+
+CORE_V1_PARITY=PASS
+
+Reference Windows toolchain used for this recorded run:
+
+go version go1.27.0 windows/amd64
+
+The parity gate also runs the complete components/core regression suite after the explicit contract vectors.
+
+The Unix-domain-socket live proxy test is skipped on Windows because that transport check requires Unix/Linux. It remains executable on Unix/Linux and is not considered removed from parity coverage.
+
+## 36. Phase 1 completion
+
+Phase 1 is complete.
+
+The current Go Core behaviour is frozen by:
+
+- written compatibility contract
+- HTTP/SSE/SPA parity harness
+- authentication parity tests
+- module proxy parity tests
+- catalog/package lifecycle safety tests
+- registry and release-index trust tests
+- post-validation tests
+- complete Core regression suite
+
+Future optimized Go, native, or hybrid Core implementations must pass the same Core v1 parity gate before they can be considered behaviourally compatible.
+
+Known inherited-opkg-file-descriptor behaviour remains classified as a defect and is explicitly excluded from required compatibility.
+
+Next development phase:
+
+Phase 2 — optimized Go Core.
