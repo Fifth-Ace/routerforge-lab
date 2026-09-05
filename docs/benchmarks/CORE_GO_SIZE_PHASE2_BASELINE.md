@@ -185,3 +185,19 @@ Shipping the helper inside the mandatory Core package would increase total insta
 
 No production implementation was committed by this spike.
 Original Core source was restored before Go 1.21.13 tests and the official Core v1 parity gate were run.
+
+## Candidate experiment: Go external HTTPS closure
+
+Measurement temporarily replaced external registry, release-index, checksum/small HTTPS fetches, and verified release-asset downloads with /opt/bin/curl.
+Module ABI HTTP server, Unix-socket HTTP client, and reverse proxy remained unchanged.
+
+Results:
+
+- current light Core: 5636096 bytes
+- experimental Core without Go external HTTPS clients: 5636096 bytes
+- saving: 0 bytes
+- reduction: 0 percent
+- remaining TLS/x509/IDNA symbol hits in the experimental binary: 585
+
+The modified source files were restored byte-for-byte before tests.
+No production source implementation is included in this measurement commit.
