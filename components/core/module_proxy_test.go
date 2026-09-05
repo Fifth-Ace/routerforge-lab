@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -148,6 +149,10 @@ func TestModuleUIUnavailableReturnsReconnectHTML(t *testing.T) {
 }
 
 func TestModuleUIProxyStillServesLiveUnixSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix domain socket transport parity is exercised on Unix/Linux")
+	}
+
 	socket := filepath.Join(t.TempDir(), "module.sock")
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
